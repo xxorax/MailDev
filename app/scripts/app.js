@@ -1,75 +1,59 @@
-/* global angular, io */
+/* global angular, io, location */
 
 /**
  * App Config
  */
 
-var app = angular.module('mailDevApp', ['ngRoute', 'ngResource',  'ngSanitize']);
+var app = angular.module('mailDevApp', ['ngRoute', 'ngResource', 'ngSanitize', 'ngCookies'])
 
-app.config(['$routeProvider', function($routeProvider){
-
+app.config(['$routeProvider', function ($routeProvider) {
   $routeProvider
     .when('/', { templateUrl: 'views/main.html', controller: 'MainCtrl' })
     .when('/email/:itemId', { templateUrl: 'views/item.html', controller: 'ItemCtrl' })
-    .otherwise({ redirectTo: '/' });
+    .otherwise({ redirectTo: '/' })
+}])
 
-}]);
-
-app.run(['$rootScope', function($rootScope){
-  
+app.run(['$rootScope', function ($rootScope) {
   // Connect Socket.io
-  var socket = io();
+  var socket = io({
+    path: location.pathname + 'socket.io'
+  })
 
-  socket.on('newMail', function(data) {
-    $rootScope.$emit('newMail', data);
-  });
-  
-  $rootScope.$on('Refresh', function() {
-    console.log('Refresh event called.');
-  });
+  socket.on('newMail', function (data) {
+    $rootScope.$emit('newMail', data)
+  })
 
-}]);
+  socket.on('deleteMail', function (data) {
+    $rootScope.$emit('deleteMail', data)
+  })
 
-/**
- * NewLineFilter -- Converts new line characters to br tags
- */
-
-app.filter('newLines', function() {
-  
-  return function(text) {
-    return text && text.replace(/\n/g, '<br>') || '';
-  };
-
-});
+  $rootScope.$on('Refresh', function () {
+    console.log('Refresh event called.')
+  })
+}])
 
 /**
- * Sidebar scrollbar fixed height
+ * filter to encode special HTML characters as HTML entities
  */
 
-(function(){
-
-  var sidebar             = document.querySelector('.sidebar')
-    , sidebarHeader       = document.querySelector('.sidebar-header')
-    , emailList           = document.querySelector('.email-list')
-    , sidebarHeaderHeight = sidebarHeader.getBoundingClientRect().height
-    , resizeTimeout       = null
-    ;
-
-  function adjustEmailListHeight(){
-    var newEmailListHeight = sidebar.getBoundingClientRect().height - sidebarHeaderHeight;
-    emailList.style.height = newEmailListHeight + 'px';
-  }
-
-  adjustEmailListHeight();
-
-  window.onresize = function(){
-    if (resizeTimeout){
-      clearTimeout(resizeTimeout);
+app.filter('escapeHTML', function () {
+  return function (text) {
+    if (text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/'/g, '&#39;')
+        .replace(/"/g, '&quot;')
     }
-    resizeTimeout = window.setTimeout(function(){
-      adjustEmailListHeight();
-      resizeTimeout = null;
-    }, 300);
-  };
+    return ''
+  }
+})
 
-})();
+/**
+ * filter to encode URI
+ */
+
+app.filter('encodeURIComponent', function ($window) {
+  return $window.encodeURIComponent
+})
